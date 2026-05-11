@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Termodinámica Atmosférica</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: #1e293b; padding: 30px; border-radius: 16px; width: 100%; max-width: 550px; border: 1px solid #334155; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: #38bdf8; border-radius: 8px; }
+        .results { background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 20px; }
+        .val { font-family: monospace; color: #38bdf8; font-weight: bold; }
+        .back-link { margin-top: 20px; color: #94a3b8; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3 style="text-align:center; color:#38bdf8;">Calculador Termodinámico 1</h3>
+    <div class="input-group">
+        <label>Altitud (m)</label>
+        <input type="number" id="alt" value="0" oninput="calc()">
+    </div>
+    <div class="input-group">
+        <label>Temperatura (°C)</label>
+        <input type="number" id="temp" value="20" oninput="calc()">
+    </div>
+    <div class="input-group">
+        <label>Humedad Relativa (%)</label>
+        <input type="number" id="hr" value="0" oninput="calc()">
+    </div>
+
+    <div class="results">
+        <p>Densidad: <span class="val" id="rRho">-</span></p>
+        <p>Presión: <span class="val" id="rPres">-</span></p>
+    </div>
+</div>
+
+<a href="index.html" class="back-link">← Volver al Menú</a>
+
+<script>
+function calc() {
+    const z = parseFloat(document.getElementById('alt').value) || 0;
+    const Tc = parseFloat(document.getElementById('temp').value) || 0;
+    const HR = (parseFloat(document.getElementById('hr').value) || 0) / 100;
+    const Tk = Tc + 273.15;
+    const P = 101.325 * Math.pow(1 - 0.0000225577 * z, 5.25588);
+    let Psat = 0.61121 * Math.exp((18.678 - Tc / 234.5) * (Tc / (257.14 + Tc)));
+    const Pv = HR * Psat;
+    const w = 0.62198 * Pv / (P - Pv);
+    const rho = (P * 1000) / (287.058 * Tk * (1 + 0.608 * w));
+
+    document.getElementById('rRho').innerText = rho.toFixed(4) + " kg/m³";
+    document.getElementById('rPres').innerText = P.toFixed(2) + " kPa";
+}
+window.onload = calc;
+</script>
+</body>
+</html>
