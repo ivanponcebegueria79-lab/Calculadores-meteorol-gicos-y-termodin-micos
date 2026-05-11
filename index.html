@@ -3,113 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculador de Energía Absoluta y Cinética</title>
+    <title>Panel de Calculadores Meteorológicos</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; margin: 0; }
-        .card { background: #1e293b; padding: 30px; border-radius: 16px; width: 100%; max-width: 550px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
-        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: #38bdf8; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
-        .results { background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid #334155; }
-        .res-line { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1e293b; align-items: center; }
-        .res-line:last-child { border-bottom: none; }
-        .val { font-family: 'Courier New', monospace; font-weight: bold; color: #38bdf8; font-size: 1.1rem; }
-        .highlight { color: #22c55e; font-size: 1.2rem; }
-        .accent { color: #fbbf24; }
-        .diff-box { margin-top: 20px; padding: 15px; background: #334155; border-radius: 10px; border-left: 4px solid #38bdf8; }
-        .diff-label { font-size: 0.7rem; color: #94a3b8; font-weight: bold; margin-bottom: 5px; }
-        .diff-val { font-size: 1.2rem; font-weight: bold; color: #f1f5f9; text-align: center; }
-        .back-link { margin-top: 25px; color: #94a3b8; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
-        .back-link:hover { color: #38bdf8; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 500px; }
+        h1 { color: #38bdf8; margin-bottom: 30px; font-size: 1.8rem; }
+        .menu-grid { display: grid; gap: 15px; }
+        .btn { 
+            display: block; 
+            padding: 15px; 
+            background: #334155; 
+            color: #38bdf8; 
+            text-decoration: none; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            border: 1px solid #38bdf8;
+            transition: all 0.3s;
+        }
+        .btn:hover { background: #38bdf8; color: #0f172a; transform: translateY(-2px); }
+        .btn.inactive { border-color: #475569; color: #475569; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h3 style="text-align:center; color:#38bdf8; margin-top:0;">Termodinámica Atmosférica (0K)</h3>
-    
-    <div class="input-group">
-        <label>Altitud (m)</label>
-        <input type="number" id="alt" value="0" oninput="calc()">
-    </div>
-    <div class="input-group">
-        <label>Temperatura (°C)</label>
-        <input type="number" id="temp" value="20" oninput="calc()">
-    </div>
-    <div class="input-group">
-        <label>Humedad Relativa (%)</label>
-        <input type="number" id="hr" value="0" oninput="calc()">
-    </div>
-
-    <div class="results">
-        <div class="res-line">
-            <span>Densidad Aire Húmedo:</span> 
-            <span class="val" id="rRho">-</span>
-        </div>
-        <div class="res-line">
-            <span>Energía Volumétrica Total:</span> 
-            <span class="val highlight" id="rh_vol">-</span>
-        </div>
-        <div class="res-line">
-            <span>Energía Cinética Vol.:</span> 
-            <span class="val" id="rec_vol">-</span>
-        </div>
-        <div class="res-line">
-            <span style="font-weight:bold;">PROMEDIO TOTAL/CINÉTICA:</span> 
-            <span class="val accent" id="rProm">-</span>
-        </div>
-    </div>
-
-    <div class="diff-box">
-        <div class="diff-label">DIFERENCIA VOLUMÉTRICA VS ESTÁNDAR (0°C, 0m, 0%HR)</div>
-        <div class="diff-val" id="rDiff">-</div>
+<div class="container">
+    <h1>Calculadores Meteorológicos</h1>
+    <div class="menu-grid">
+        <a href="index.html" class="btn">1. Termodinámica Atmosférica (Actual)</a>
+        
+        <a href="entalpia-absoluta-relativa .html" class="btn">2. Energía Absoluta y Cinética</a>
+        
+        <a href="#" class="btn inactive">3. Próximo Calculador (Próximamente)</a>
     </div>
 </div>
-
-<a href="index.html" class="back-link">← Volver al Menú Principal</a>
-
-<script>
-function calc() {
-    const z = parseFloat(document.getElementById('alt').value) || 0;
-    const Tc = parseFloat(document.getElementById('temp').value) || 0;
-    const HR = (parseFloat(document.getElementById('hr').value) || 0) / 100;
-    
-    const Tk = Tc + 273.15;
-    const cp_aire = 1.006;   
-    const cv_aire = 0.718;   
-    const cp_vapor = 1.86;   
-    const cv_vapor = 1.41;   
-    const L_sub = 2834;      
-
-    const P = 101.325 * Math.pow(1 - 0.0000225577 * z, 5.25588);
-
-    let Psat = 0.61121 * Math.exp((18.678 - Tc / 234.5) * (Tc / (257.14 + Tc)));
-    if (Tc < 0) Psat = 0.61115 * Math.exp((23.036 - Tc / 333.7) * (Tc / (279.82 + Tc)));
-    const Pv = Math.min(HR * Psat, P * 0.9); 
-    const w = 0.62198 * Pv / (P - Pv);
-
-    const rho = (P * 1000) / (287.058 * Tk * (1 + 0.608 * w));
-
-    const e_kg_total = (cp_aire * Tk + w * (cp_vapor * Tk + L_sub)) / (1 + w);
-    const e_vol_total = e_kg_total * rho;
-
-    const ec_kg = (cv_aire * Tk + w * cv_vapor * Tk) / (1 + w);
-    const ec_vol = ec_kg * rho;
-
-    const e_promedio = (e_vol_total + ec_vol) / 2;
-
-    const e_vol_ref = 355.07; 
-    const diff = e_vol_total - e_vol_ref;
-
-    document.getElementById('rRho').innerText = rho.toFixed(4) + " kg/m³";
-    document.getElementById('rh_vol').innerText = e_vol_total.toFixed(2) + " kJ/m³";
-    document.getElementById('rec_vol').innerText = ec_vol.toFixed(2) + " kJ/m³";
-    document.getElementById('rProm').innerText = e_promedio.toFixed(2) + " kJ/m³";
-    document.getElementById('rDiff').innerText = (diff > 0 ? "+" : "") + diff.toFixed(2) + " kJ/m³";
-}
-
-window.onload = calc;
-</script>
 
 </body>
 </html>
