@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculador de Energía Absoluta Atmosférica</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #1e293b; padding: 30px; border-radius: 16px; width: 100%; max-width: 500px; border: 1px solid #334155; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: #38bdf8; border-radius: 8px; font-size: 1rem; }
+        .results { background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid #38bdf8; }
+        .res-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e293b; }
+        .val { font-family: monospace; font-weight: bold; color: #38bdf8; }
+        .diff-box { margin-top: 20px; padding: 15px; background: #334155; border-radius: 10px; border-left: 4px solid #fbbf24; }
+        .diff-val { font-size: 1.4rem; font-weight: bold; color: #fbbf24; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3 style="text-align:center; color:#38bdf8">Energía Absoluta (Referencia 0K)</h3>
+    
+    <div class="input-group">
+        <label>Altitud (m)</label>
+        <input type="number" id="alt" value="0" oninput="calc()">
+    </div>
+    <div class="input-group">
+        <label>Temperatura (°C)</label>
+        <input type="number" id="temp" value="20" oninput="calc()">
+    </div>
+    <div class="input-group">
+        <label>Humedad Relativa (%)</label>
+        <input type="number" id="hr" value="0" oninput="calc()">
+    </div>
+
+    <div class="results">
+        <div class="res-line"><span>Densidad Total:</span> <span class="val" id="rRho">-</span> <span class="unit">kg/m³</span></div>
+        <div class="res-line"><span>Energía Específica:</span> <span class="val" id="rh">-</span> <span class="unit">kJ/kg</span></div>
+        <div class="res-line" style="border:none; margin-top:10px;">
+            <span style="font-weight:bold;">ENERGÍA VOLUMÉTRICA:</span> 
+            <span class="val" id="rh_vol" style="color:#22c55e; font-size:1.2em;">-</span>
+        </div>
+    </div>
+
+    <div class="diff-box">
+        <div style="font-size:0.7rem; color:#fbbf24; font-weight:bold; text-transform:uppercase;">Diferencia vs Estándar (0°C, 0m, 0%HR)</div>
+        <div class="diff-val" id="rDiff">-</div>
+    </div>
+</div>
+
+<script>
+function calc() {
+    const z = parseFloat(document.getElementById('alt').value) || 0;
+    const Tc = parseFloat(document.getElementById('temp').value) || 0;
+    const HR = (parseFloat(document.getElementById('hr').value) || 0) / 100;
+    
+    const Tk = Tc + 273.15;
+    const cp_aire = 1.006;  // kJ/kgK
+    const cp_vapor = 1.86;  // kJ/kgK
+    const L_sub = 2834;     // kJ/kg (Energía de fase)
+
+    // 1. Presión Atmosférica (kPa)
+    const P = 101.325 * Math.pow(1 - 0.0000225577 * z, 5.25588);
+
+    // 2. Psicrometría corregida
+    let Psat = 0.61121 * Math.exp((18.678 - Tc / 234.5) * (Tc / (257.14 + Tc)));
+    if (Tc < 0) Psat = 0.61115 * Math.exp((23.036 - Tc / 333.7) * (Tc / (279.82 + Tc)));
+    const Pv = Math.min(HR * Psat, P * 0.9); // El vapor no puede superar la presión total
+    
+    // Relación de humedad (kg vapor / kg aire seco)
+    const w = 0.62198 * Pv / (P - Pv);
+
+    // 3. DENSIDAD TOTAL REAL (kg/m³)
+    const rho = (P * 1000) / (287.058 * Tk * (1 + 0.608 * w));
+
+    // 4. ENERGÍA ESPECÍFICA ABSOLUTA (kJ/kg de mezcla húmeda)
+    // E_total = (Masa_aire * E_aire + Masa_vapor * E_vapor) / Masa_total
+    // E_total = (1 * cp_aire * Tk + w * (cp_vapor * Tk + L_sub)) / (1 + w)
+    const e_kg = (cp_aire * Tk + w * (cp_vapor * Tk + L_sub)) / (1 + w);
+
+    // 5. ENERGÍA POR VOLUMEN (kJ/m³)
+    const e_vol = e_kg * rho;
+
+    // 6. DIFERENCIA (Ref: 0°C, 0m, 0%HR -> rho=1.2922, e_kg=274.79)
+    const e_vol_ref = 355.07; 
+    const diff = e_vol - e_vol_ref;
+
+    document.getElementById('rRho').innerText = rho.toFixed(4);
+    document.getElementById('rh').innerText = e_kg.toFixed(2) + " kJ/kg";
+    document.getElementById('rh_vol').innerText = e_vol.toFixed(2) + " kJ/m³";
+    document.getElementById('rDiff').innerText = (diff > 0 ? "+" : "") + diff.toFixed(2) + " kJ/m³";
+}
+window.onload = calc;
+</script>
+</body>
+</html>
