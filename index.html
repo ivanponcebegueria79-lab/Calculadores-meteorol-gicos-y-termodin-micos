@@ -2,9 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculador de Energía Absoluta y Cinética</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; justify-content: center; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; margin: 0; }
         .card { background: #1e293b; padding: 30px; border-radius: 16px; width: 100%; max-width: 550px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
         .input-group { margin-bottom: 15px; }
         label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -18,6 +19,8 @@
         .diff-box { margin-top: 20px; padding: 15px; background: #334155; border-radius: 10px; border-left: 4px solid #38bdf8; }
         .diff-label { font-size: 0.7rem; color: #94a3b8; font-weight: bold; margin-bottom: 5px; }
         .diff-val { font-size: 1.2rem; font-weight: bold; color: #f1f5f9; text-align: center; }
+        .back-link { margin-top: 25px; color: #94a3b8; text-decoration: none; font-size: 0.9rem; transition: color 0.3s; }
+        .back-link:hover { color: #38bdf8; }
     </style>
 </head>
 <body>
@@ -63,51 +66,41 @@
     </div>
 </div>
 
+<a href="index.html" class="back-link">← Volver al Menú Principal</a>
+
 <script>
 function calc() {
-    // Captura de inputs
     const z = parseFloat(document.getElementById('alt').value) || 0;
     const Tc = parseFloat(document.getElementById('temp').value) || 0;
     const HR = (parseFloat(document.getElementById('hr').value) || 0) / 100;
     
-    // Constantes físicas
     const Tk = Tc + 273.15;
-    const cp_aire = 1.006;   // kJ/kgK (Presión constante)
-    const cv_aire = 0.718;   // kJ/kgK (Volumen constante - Cinética pura)
-    const cp_vapor = 1.86;   // kJ/kgK
-    const cv_vapor = 1.41;   // kJ/kgK
-    const L_sub = 2834;      // kJ/kg (Energía latente de fase)
+    const cp_aire = 1.006;   
+    const cv_aire = 0.718;   
+    const cp_vapor = 1.86;   
+    const cv_vapor = 1.41;   
+    const L_sub = 2834;      
 
-    // 1. Presión Atmosférica según altitud (kPa)
     const P = 101.325 * Math.pow(1 - 0.0000225577 * z, 5.25588);
 
-    // 2. Presión de vapor y relación de mezcla
     let Psat = 0.61121 * Math.exp((18.678 - Tc / 234.5) * (Tc / (257.14 + Tc)));
     if (Tc < 0) Psat = 0.61115 * Math.exp((23.036 - Tc / 333.7) * (Tc / (279.82 + Tc)));
     const Pv = Math.min(HR * Psat, P * 0.9); 
     const w = 0.62198 * Pv / (P - Pv);
 
-    // 3. Densidad de la mezcla (kg/m³)
     const rho = (P * 1000) / (287.058 * Tk * (1 + 0.608 * w));
 
-    // 4. Energía Volumétrica Total (kJ/m³)
-    // Incluye calor sensible + calor latente de la fracción de vapor
     const e_kg_total = (cp_aire * Tk + w * (cp_vapor * Tk + L_sub)) / (1 + w);
     const e_vol_total = e_kg_total * rho;
 
-    // 5. Energía Cinética Volumétrica (kJ/m³)
-    // Lógica de "Suma Simple": Solo energía de movimiento molecular (Cv * T)
     const ec_kg = (cv_aire * Tk + w * cv_vapor * Tk) / (1 + w);
     const ec_vol = ec_kg * rho;
 
-    // 6. Promedio entre Total y Cinética
     const e_promedio = (e_vol_total + ec_vol) / 2;
 
-    // 7. Comparación con estándar (Ref: 0°C, 0m, 0%HR -> ~355.07 kJ/m³)
     const e_vol_ref = 355.07; 
     const diff = e_vol_total - e_vol_ref;
 
-    // Actualización de interfaz
     document.getElementById('rRho').innerText = rho.toFixed(4) + " kg/m³";
     document.getElementById('rh_vol').innerText = e_vol_total.toFixed(2) + " kJ/m³";
     document.getElementById('rec_vol').innerText = ec_vol.toFixed(2) + " kJ/m³";
@@ -115,7 +108,6 @@ function calc() {
     document.getElementById('rDiff').innerText = (diff > 0 ? "+" : "") + diff.toFixed(2) + " kJ/m³";
 }
 
-// Ejecución inicial
 window.onload = calc;
 </script>
 
