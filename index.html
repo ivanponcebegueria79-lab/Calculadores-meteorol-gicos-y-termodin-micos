@@ -3,38 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Calculadores Meteorológicos</title>
+    <title>Panel de Control - Meteorología</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .container { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 90%; max-width: 500px; }
-        h1 { color: #38bdf8; margin-bottom: 30px; font-size: 1.8rem; }
-        .menu-grid { display: grid; gap: 15px; }
+        .container { text-align: center; background: #1e293b; padding: 40px; border-radius: 20px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 90%; max-width: 450px; }
+        h1 { color: #38bdf8; margin-bottom: 30px; font-size: 1.5rem; }
         .btn { 
             display: block; 
             padding: 15px; 
+            margin-bottom: 15px;
             background: #334155; 
             color: #38bdf8; 
             text-decoration: none; 
             border-radius: 10px; 
             font-weight: bold; 
             border: 1px solid #38bdf8;
-            transition: all 0.3s;
+            transition: 0.3s;
         }
-        .btn:hover { background: #38bdf8; color: #0f172a; transform: translateY(-2px); }
-        .btn.inactive { border-color: #475569; color: #475569; cursor: not-allowed; }
+        .btn:hover { background: #38bdf8; color: #0f172a; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Calculadores Meteorológicos</h1>
-    <div class="menu-grid">
-        <a href="<a href="termodinamica.html" class="btn">1. Termodinámica Atmosférica</a>" class="btn">1. Termodinámica Atmosférica (Actual)</a>
-        
-        <a href="entalpia-absoluta-relativa.html" class="btn">2. Energía Absoluta y Cinética</a>
-        
-        <a href="#" class="btn inactive">3. Próximo Calculador (Próximamente)</a>
-    </div>
+    <h1>Calculadores Termodinámicos</h1>
+    
+    <a href="termodinamica.html" class="btn">1. Termodinámica Atmosférica</a>
+    
+    <a href="entalpia-absoluta-relativa.html" class="btn">2. Energía Absoluta y Cinética</a>
+    
 </div>
 
 </body>
