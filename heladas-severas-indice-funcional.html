@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculador Meteorológico Personalizado</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: #f1f5f9; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #1e293b; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 500px; width: 100%; border: 1px solid #334155; }
+        h2 { color: #38bdf8; margin-top: 0; border-bottom: 2px solid #334155; padding-bottom: 12px; font-size: 1.3rem; text-align: center; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
+        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; transition: 0.2s; }
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.2); }
+        .results { margin-top: 25px; background: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .result-line { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem; }
+        .label-text { color: #94a3b8; }
+        .val { font-family: 'Consolas', monospace; font-weight: bold; color: #f8fafc; }
+        .highlight-base { color: #fbbf24; }
+        .highlight-final { color: #2dd4bf; font-size: 1.2rem; border-top: 1px solid #334155; padding-top: 10px; margin-top: 10px; }
+        .footer { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 15px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Calculador 70/30 + Ajuste Altitud</h2>
+    
+    <div class="input-group">
+        <label>Temperatura Seca (°C)</label>
+        <input type="number" id="temp" value="30" step="0.1">
+    </div>
+    <div class="input-group">
+        <label>Humedad Relativa (%)</label>
+        <input type="number" id="hr" value="26" min="0" max="100">
+    </div>
+    <div class="input-group">
+        <label>Altitud (msnm)</label>
+        <input type="number" id="alt" value="1000">
+    </div>
+
+    <div class="results" id="output"></div>
+
+    <div class="footer">
+        Cálculo: 70% T seca + 30% T rocío<br>
+        Ajuste: -3 × (Tw nivel mar - Tw estación)
+    </div>
+</div>
+
+<script>
+    const inputs = ['temp', 'hr', 'alt'];
+    inputs.forEach(id => document.getElementById(id).addEventListener('input', calculate));
+
+    function getTwet(Tdry, e_actual, P_local) {
+        let Tw = Tdry - 2.0; 
+        for (let i = 0; i < 15; i++) {
+            let es_w = 6.112 * Math.exp((17.67 * Tw) / (Tw + 243.5));
+            let f = (es_w - e_actual) - 0.00066 * P_local * (Tdry - Tw) * (1 + 0.00115 * Tw);
+            let df = (es_w * (17.67 * 243.5) / Math.pow(Tw + 243.5, 2)) + 0.00066 * P_local;
+            
+            let Tw_next = Tw - f / df;
+            if (Math.abs(Tw_next - Tw) < 0.0001) break;
+            Tw = Tw_next;
+        }
+        return Tw;
+    }
+
+    function calculate() {
+        const T = parseFloat(document.getElementById('temp').value);
+        const RH = parseFloat(document.getElementById('hr').value) / 100;
+        const Z = parseFloat(document.getElementById('alt').value);
+
+        const P_sea = 1013.25;
+        const P_st = P_sea * Math.pow((1 - 0.0065 * Z / 288.15), 5.255);
+
+        const es = 6.112 * Math.exp((17.67 * T) / (T + 243.5));
+        const e = es * RH;
+        const Td = (243.5 * Math.log(e/6.112)) / (17.67 - Math.log(e/6.112));
+
+        const Tw_st = getTwet(T, e, P_st);
+        const Tw_sea = getTwet(T, e, P_sea);
+
+        const T_base = (0.7 * T) + (0.3 * Td);
+        
+        const bajada_Tw = Tw_sea - Tw_st;
+        const penalizacion = bajada_Tw * 3;
+        const T_final = T_base - penalizacion;
+
+        document.getElementById('output').innerHTML = `
+            <div class="result-line"><span class="label-text">T Rocío:</span> <span class="val">${Td.toFixed(2)} °C</span></div>
+            <div class="result-line"><span class="label-text">T Húmeda Nivel Mar:</span> <span class="val">${Tw_sea.toFixed(2)} °C</span></div>
+            <div class="result-line"><span class="label-text">T Húmeda Estación (${Z}m):</span> <span class="val">${Tw_st.toFixed(2)} °C</span></div>
+            <div class="result-line"><span class="label-text">Diferencia T Húmeda:</span> <span class="val">${bajada_Tw.toFixed(3)} °C</span></div>
+            <div class="result-line"><span class="label-text">Base 70/30:</span> <span class="val highlight-base">${T_base.toFixed(3)} °C</span></div>
+            <div class="result-line highlight-final">
+                <span><b>RESULTADO FINAL:</b></span> 
+                <span class="val">${T_final.toFixed(3)} °C</span>
+            </div>
+            <div style="text-align: right; font-size: 0.7rem; color: #ef4444; margin-top: 5px;">
+                Penalización aplicada: -${penalizacion.toFixed(3)}°C
+            </div>
+        `;
+    }
+
+    calculate();
+</script>
+
+</body>
+</html>
