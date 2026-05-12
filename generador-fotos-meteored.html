@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador Pro para Foro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: #f1f5f9; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #1e293b; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 600px; width: 100%; border: 1px solid #334155; }
+        h2 { color: #38bdf8; margin-top: 0; text-align: center; }
+        label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 0.9rem; font-weight: 600; }
+        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 1rem; box-sizing: border-box; }
+        .output-area { margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px dashed #38bdf8; }
+        .output-text { font-family: 'Consolas', monospace; word-break: break-all; color: #2dd4bf; font-size: 0.95rem; min-height: 20px; }
+        button { width: 100%; padding: 12px; background: #38bdf8; border: none; border-radius: 8px; color: #0f172a; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .footer { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Generador Inteligente</h2>
+    
+    <label>Pega aquí cualquier enlace de la foto:</label>
+    <input type="text" id="inputUrl" placeholder="Pega aquí..." oninput="limpiarYConvertir()">
+
+    <label style="margin-top:20px;">Código resultante para el foro:</label>
+    <div class="output-area">
+        <div id="outputCode" class="output-text">Esperando...</div>
+    </div>
+    
+    <button onclick="copiar()">Copiar Código</button>
+
+    <div class="footer">
+        Este generador limpia automáticamente etiquetas [IMG] o [URL] sobrantes.
+    </div>
+</div>
+
+<script>
+    function limpiarYConvertir() {
+        let valor = document.getElementById('inputUrl').value.trim();
+        const output = document.getElementById('outputCode');
+
+        if (!valor) { output.innerText = "Esperando..."; return; }
+
+        // EXTRACCIÓN MÁGICA: Buscamos solo la URL que empieza por http y termina en jpg/png/gif
+        const regex = /(https?:\/\/[^\]\s]+\.(?:jpg|jpeg|png|gif))/i;
+        const encontrado = valor.match(regex);
+
+        if (encontrado) {
+            output.innerText = "[img]" + encontrado[0] + "[/img]";
+        } else {
+            output.innerText = "Error: No se detecta un enlace de imagen válido (.jpg, .png)";
+        }
+    }
+
+    function copiar() {
+        const text = document.getElementById('outputCode').innerText;
+        if (text.includes("Esperando") || text.includes("Error")) return;
+        navigator.clipboard.writeText(text);
+        alert("¡Copiado! Pégalo ahora en el foro.");
+    }
+</script>
+
+</body>
+</html>
