@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculador Solar: Culminación y Energía</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; padding: 20px; }
+        .card { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #1a365d; text-align: center; margin-bottom: 20px; }
+        .inputs { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; background: #edf2f7; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .field { display: flex; flex-direction: column; align-items: center; font-size: 0.85em; color: #4a5568; }
+        label { margin-bottom: 5px; font-weight: bold; }
+        input { width: 70px; padding: 8px; text-align: center; border: 1px solid #cbd5e0; border-radius: 5px; }
+        button { padding: 10px 25px; background: #2c5282; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; align-self: flex-end; }
+        button:hover { background: #2a4365; }
+        .table-cont { max-height: 500px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { background: #2d3748; color: white; padding: 12px; position: sticky; top: 0; }
+        td { padding: 8px; border-bottom: 1px solid #edf2f7; text-align: center; }
+        .solstice-row { background-color: #fef3c7 !important; font-weight: bold; }
+        .val-total { color: #2f855a; font-weight: bold; }
+        .noon-col { color: #c53030; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Análisis de Culminación Solar e Irradiación</h2>
+    <div class="inputs">
+        <div class="field"><label>Año</label><input type="number" id="año" value="2026"></div>
+        <div class="field"><label>Latitud (°)</label><input type="number" id="lat_g" value="40.41"></div>
+        <div class="field"><label>Longitud (°)</label><input type="number" id="lon_g" value="-3.70"></div>
+        <div class="field"><label>UTC Offset</label><input type="number" id="utc" value="1" title="Huso horario (ej: España +1)"></div>
+        <button onclick="calcular()">Calcular Calendario</button>
+    </div>
+
+    <div class="table-cont">
+        <table id="tabla">
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th>Fecha</th>
+                    <th>Mediodía Solar (Reloj)</th>
+                    <th>Horas Luz</th>
+                    <th>Irradiación (Wh/m²)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function calcular() {
+    const year = parseInt(document.getElementById('año').value);
+    const lat = parseFloat(document.getElementById('lat_g').value);
+    const lon = parseFloat(document.getElementById('lon_g').value);
+    const utc = parseFloat(document.getElementById('utc').value);
+    
+    const phi = lat * (Math.PI / 180);
+    const Gsc = 1367;
+    const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    const totalDays = isLeap ? 366 : 365;
+    
+    const tbody = document.querySelector("#tabla tbody");
+    tbody.innerHTML = "";
+    let rowsData = [];
+    let maxVal = 0;
+
+    for (let J = 1; J <= totalDays; J++) {
+        // 1. Fracción del año
+        const gamma = (2 * Math.PI / totalDays) * (J - 1);
+        
+        // 2. Declinación (necesaria para irradiación y horas luz)
+        const delta = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) 
+                      - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma);
+
+        // 3. Ecuación del Tiempo (Et) en minutos
+        const et = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) 
+                   - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
+
+        // 4. Cálculo del Mediodía Solar (Culminación)
+        // La fórmula es: 12:00 - corrección_longitud - Ecuación_del_tiempo
+        // Corrección longitud: (Longitud Local - Longitud Meridiano Estándar) * 4 min/grado
+        const meridianoEstandar = utc * 15;
+        const correccionLon = 4 * (lon - meridianoEstandar);
+        const solarNoonMinutes = 720 - correccionLon - et;
+        
+        const hours = Math.floor(solarNoonMinutes / 60);
+        const minutes = Math.floor(solarNoonMinutes % 60);
+        const seconds = Math.floor((solarNoonMinutes * 60) % 60);
+        const timeStr = `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+
+        // 5. Irradiación e Horas Luz
+        const Eo = 1.000110 + 0.034221 * Math.cos(gamma) + 0.001280 * Math.sin(gamma);
+        let cosWs = -Math.tan(phi) * Math.tan(delta);
+        let ws = (cosWs >= 1) ? 0 : (cosWs <= -1) ? Math.PI : Math.acos(cosWs);
+        const Ho = (24 / Math.PI) * Gsc * Eo * (Math.cos(phi) * Math.cos(delta) * Math.sin(ws) + (ws * Math.sin(phi) * Math.sin(delta)));
+        
+        let fecha = new Date(year, 0, J);
+        let valHo = Math.round(Ho);
+        if(valHo > maxVal) maxVal = valHo;
+
+        rowsData.push({
+            d: J,
+            f: `${fecha.getDate()} ${["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][fecha.getMonth()]}`,
+            noon: timeStr,
+            hrs: ((2 * ws * 180 / Math.PI) / 15).toFixed(2),
+            total: valHo
+        });
+    }
+
+    rowsData.forEach(r => {
+        const isSolstice = r.total === maxVal;
+        tbody.innerHTML += `<tr class="${isSolstice ? 'solstice-row' : ''}">
+            <td>${r.d}</td>
+            <td>${r.f}</td>
+            <td class="noon-col">${r.noon}</td>
+            <td>${r.hrs}h</td>
+            <td class="val-total">${r.total}</td>
+        </tr>`;
+    });
+}
+window.onload = calcular;
+</script>
+</body>
+</html>
