@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calendario Solar 2026 - Azimuts Precisos</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #1a5f7a; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #666; margin-bottom: 25px; }
+        .controls { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; background: #eef2f3; padding: 15px; border-radius: 8px; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100px; }
+        .table-wrapper { height: 600px; overflow-y: auto; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #1a5f7a; color: white; position: sticky; top: 0; padding: 12px; z-index: 10; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; text-align: center; }
+        tr:nth-child(even) { background: #fafafa; }
+        .equinoccio { background-color: #e8f5e9 !important; font-weight: bold; color: #2e7d32; }
+        .solsticio { background-color: #fff3e0 !important; font-weight: bold; color: #ef6c00; }
+        .val-special { font-weight: bold; color: #d32f2f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Calendario Solar Preciso 2026</h1>
+    <p class="subtitle">Cálculo de azimuts para Longitud 0° (Referencia Norte = 0°)</p>
+    
+    <div class="controls">
+        <div>
+            <label>Latitud (°): </label>
+            <input type="number" id="lat" value="40.41" step="0.01">
+        </div>
+        <button onclick="generarCalendario()" style="padding: 8px 20px; cursor:pointer; background:#1a5f7a; color:white; border:none; border-radius:4px;">Recalcular Año</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="tablaSolar">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Evento</th>
+                    <th>Amanecer (h=0°)</th>
+                    <th>Mañana (Punto medio)</th>
+                    <th>Mediodía Solar</th>
+                    <th>Tarde (Punto medio)</th>
+                    <th>Ocaso (h=0°)</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function getDeclinacionPrecisa(n) {
+    // Cálculo basado en la posición media del sol (más preciso que Cooper)
+    // n es el día del año
+    const g = (357.528 + 0.9856003 * n) * Math.PI / 180; // Anomalía media
+    const lambda = (280.460 + 0.9856474 * n + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180; // Longitud eclíptica
+    const epsilon = 23.439 * Math.PI / 180; // Oblicuidad de la eclíptica
+    return Math.asin(Math.sin(epsilon) * Math.sin(lambda));
+}
+
+function calcularAzimut(latRad, decliRad, hRad, HRad) {
+    let cos_A = (Math.sin(decliRad) - Math.sin(latRad) * Math.sin(hRad)) / (Math.cos(latRad) * Math.cos(hRad));
+    cos_A = Math.max(-1, Math.min(1, cos_A));
+    let A = Math.acos(cos_A) * 180 / Math.PI;
+    return (HRad > 0) ? (360 - A) : A;
+}
+
+function generarCalendario() {
+    const lat = parseFloat(document.getElementById('lat').value);
+    const latRad = lat * Math.PI / 180;
+    const cuerpo = document.getElementById('cuerpoTabla');
+    cuerpo.innerHTML = "";
+
+    const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+    for (let n = 1; n <= 365; n++) {
+        const decliRad = getDeclinacionPrecisa(n);
+        
+        // Coseno del ángulo horario al amanecer (h=0)
+        let cosHs = -Math.tan(latRad) * Math.tan(decliRad);
+        
+        let row = document.createElement('tr');
+        
+        // Fechas de 2026
+        let fechaObj = new Date(2026, 0, n);
+        let fechaTxt = `${fechaObj.getDate()} ${meses[fechaObj.getMonth()]}`;
+
+        // Hitos astronómicos 2026
+        if (n === 79) { row.className = "equinoccio"; evento = "Equinoccio Mar"; }
+        else if (n === 172) { row.className = "solsticio"; evento = "Solsticio Jun"; }
+        else if (n === 266) { row.className = "equinoccio"; evento = "Equinoccio Sep"; }
+        else if (n === 355) { row.className = "solsticio"; evento = "Solsticio Dic"; }
+        else { evento = ""; }
+
+        if (Math.abs(cosHs) > 1) {
+            row.innerHTML = `<td>${fechaTxt}</td><td>${evento}</td><td colspan="5">${cosHs > 1 ? 'Noche Polar' : 'Sol de Medianoche'}</td>`;
+        } else {
+            const Hs = Math.acos(cosHs);
+            
+            // Calculamos puntos clave
+            const azAma = calcularAzimut(latRad, decliRad, 0, -Hs);
+            
+            // Para el punto medio (mañana), calculamos primero la elevación en Hs/2
+            const sin_h_medio = Math.sin(latRad) * Math.sin(decliRad) + Math.cos(latRad) * Math.cos(decliRad) * Math.cos(-Hs/2);
+            const h_medio = Math.asin(sin_h_medio);
+            const azMaman = calcularAzimut(latRad, decliRad, h_medio, -Hs/2);
+            
+            // Mediodía (H=0, la elevación es máxima)
+            const sin_h_max = Math.sin(latRad) * Math.sin(decliRad) + Math.cos(latRad) * Math.cos(decliRad);
+            const h_max = Math.asin(sin_h_max);
+            const azMed = calcularAzimut(latRad, decliRad, h_max, 0);
+            
+            const azMtar = calcularAzimut(latRad, decliRad, h_medio, Hs/2);
+            const azOca = calcularAzimut(latRad, decliRad, 0, Hs);
+
+            // Resaltar los 90° y 270° en equinoccio
+            const clAma = (azAma > 89.5 && azAma < 90.5) ? "val-special" : "";
+            const clOca = (azOca > 269.5 && azOca < 270.5) ? "val-special" : "";
+
+            row.innerHTML = `
+                <td>${fechaTxt}</td>
+                <td><small>${evento}</small></td>
+                <td class="${clAma}">${azAma.toFixed(1)}°</td>
+                <td>${azMaman.toFixed(1)}°</td>
+                <td style="color:#1a5f7a; font-weight:bold;">${azMed.toFixed(1)}°</td>
+                <td>${azMtar.toFixed(1)}°</td>
+                <td class="${clOca}">${azOca.toFixed(1)}°</td>
+            `;
+        }
+        cuerpo.appendChild(row);
+    }
+}
+
+window.onload = generarCalendario;
+</script>
+
+</body>
+</html>
