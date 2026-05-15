@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculateur de Refroidissement Sphère d'Eau (2026)</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #eceff1; padding: 20px; display: flex; justify-content: center; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 550px; }
+        h2 { color: #1565c0; border-bottom: 3px solid #1e88e5; padding-bottom: 10px; margin-top: 0; font-size: 1.3rem; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 0.8rem; font-weight: 700; color: #444; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; background: #fff; }
+        input:disabled { background: #f5f5f5; cursor: not-allowed; }
+        .results { background: #e3f2fd; padding: 20px; border-radius: 10px; border: 1px solid #90caf9; margin-top: 15px; text-align: center; }
+        .val-big { font-size: 2.2rem; font-weight: bold; color: #1565c0; display: block; margin: 5px 0; }
+        .unit { font-size: 1rem; color: #1565c0; }
+        .warning { color: #b71c1c; background: #ffebee; padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 15px; display: none; border: 1px solid #ef9a9a; }
+        .info-physics { font-size: 0.75rem; color: #607d8b; margin-top: 15px; line-height: 1.4; border-top: 1px solid #cfd8dc; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Refroidissement : Sphère d'Eau (100 cm³)</h2>
+    
+    <div id="error_msg" class="warning"></div>
+
+    <div class="grid">
+        <div>
+            <label>Temp. Air T dry (°C)</label>
+            <input type="number" id="tdry" value="5" step="0.1" oninput="calculate()">
+        </div>
+        <div>
+            <label>Humidité Relative (%)</label>
+            <input type="number" id="rh" value="60" min="1" max="100" oninput="calculate()">
+        </div>
+        <div>
+            <label>Vent Moyen (km/h)</label>
+            <input type="number" id="vmean" value="10" min="0" oninput="validateWind(); calculate();">
+        </div>
+        <div>
+            <label>Vent Max / Rafales (km/h)</label>
+            <input type="number" id="vmax" value="20" min="0" oninput="validateWind(); calculate();">
+        </div>
+        <div>
+            <label>Altitude (msnm)</label>
+            <input type="number" id="alt" value="500" oninput="calculate()">
+        </div>
+        <div>
+            <label>Temp. Eau Initiale (°C)</label>
+            <input type="number" id="twat" value="15" oninput="calculate()">
+        </div>
+    </div>
+
+    <div class="results">
+        <label>Vitesse de refroidissement initiale</label>
+        <span class="val-big" id="speed_res">--</span>
+        <span class="unit">°C / heure</span>
+        
+        <div style="margin-top:15px; font-size:0.9rem; color:#455a64;">
+            Limite thermique (T wet) : <span id="twet_res" style="font-weight:bold;">--</span>
+        </div>
+    </div>
+
+    <div class="info-physics">
+        <strong>Modèle 2026 :</strong> Sphère flottante de 100g d'eau (Ø 5.76cm). <br>
+        Prend en compte la convection forcée (vent), l'effet stérique de l'air (altitude) et le refroidissement évaporatif (limite T-wet).
+    </div>
+</div>
+
+<script>
+function validateWind() {
+    const vMean = document.getElementById('vmean');
+    const vMax = document.getElementById('vmax');
+    // Bloque le vent max pour qu'il soit au moins égal au vent moyen
+    if (parseFloat(vMax.value) < parseFloat(vMean.value)) {
+        vMax.value = vMean.value;
+    }
+}
+
+function calculate() {
+    const T = parseFloat(document.getElementById('tdry').value);
+    const rh = parseFloat(document.getElementById('rh').value);
+    const vMean = parseFloat(document.getElementById('vmean').value);
+    const vMax = parseFloat(document.getElementById('vmax').value);
+    const alt = parseFloat(document.getElementById('alt').value);
+    const Twat = parseFloat(document.getElementById('twat').value);
+    const err = document.getElementById('error_msg');
+
+    err.style.display = "none";
+
+    // 1. Pression station
+    const Psta = 1013.25 * Math.pow((1 - 2.25577e-5 * alt), 5.25588);
+
+    // 2. Calcul T wet (itératif NWS 2026)
+    const es = 6.112 * Math.exp((17.67 * T) / (T + 243.5));
+    const e = (rh / 100) * es;
+    let Twet = T;
+    for(let i=0; i<10; i++) {
+        let esw = 6.112 * Math.exp((17.67 * Twet) / (Twet + 243.5));
+        let de = esw - e;
+        let slope = esw * (17.67 * 243.5) / Math.pow(Twet + 243.5, 2) + 0.00066 * Psta;
+        Twet = Twet - (de - 0.00066 * Psta * (T - Twet)) / slope;
+    }
+    document.getElementById('twet_res').innerText = Twet.toFixed(1) + " °C";
+
+    // Sécurité logique
+    if (Twat <= Twet) {
+        err.innerText = "L'eau est déjà à sa température limite ou plus froide. Pas de refroidissement.";
+        err.style.display = "block";
+        document.getElementById('speed_res').innerText = "0.0";
+        return;
+    }
+
+    // 3. Propriétés de l'objet (100 cm3)
+    const masse = 0.1; // kg
+    const surface = 0.01042; // m2 (sphère de 100ml)
+    const Cp = 4186; // J/kg.K
+
+    // 4. Vent effectif (Moyenne pondérée) et Coefficient Convectif h
+    const vEff = (vMean * 0.7) + (vMax * 0.3);
+    const vMs = vEff / 3.6; // conversion m/s
+    
+    // Formule de Jurges modifiée pour l'altitude (densité de l'air)
+    const rhoRatio = Psta / 1013.25;
+    let h = (5.8 + 4.1 * vMs) * rhoRatio; 
+
+    // 5. Calcul de la vitesse en °C/h
+    // Formule : dT/dt = (h * S * DeltaT) / (m * Cp)
+    // Résultat en °C/s, donc * 3600 pour avoir °C/h
+    const deltaT = Twat - Twet;
+    const coolingRateSec = (h * surface * deltaT) / (masse * Cp);
+    const coolingRateHour = coolingRateSec * 3600;
+
+    document.getElementById('speed_res').innerText = coolingRateHour.toFixed(1);
+}
+
+calculate();
+</script>
+
+</body>
+</html>
