@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Potencia Solar Alta Precisión</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; display: flex; justify-content: center; padding: 20px; }
+        .card { background: #ffffff; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: 100%; max-width: 500px; }
+        h2 { text-align: center; color: #34495e; border-bottom: 3px solid #f1c40f; padding-bottom: 10px; margin-top: 0; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #2c3e50; font-size: 0.95em; }
+        input[type="number"] { width: 100%; padding: 12px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 1.1em; outline: none; transition: border 0.3s; }
+        input[type="number"]:focus { border-color: #f1c40f; }
+        input[type="range"] { width: 100%; height: 8px; border-radius: 5px; background: #d3d3d3; outline: none; margin-top: 15px; }
+        .results { background: #fdfefe; padding: 25px; border-radius: 12px; border: 1px solid #ebedef; margin-top: 20px; }
+        .res-item { display: flex; justify-content: space-between; margin-bottom: 18px; font-size: 1.1em; border-bottom: 1px solid #f2f3f4; padding-bottom: 8px; }
+        .val { font-weight: bold; color: #2980b9; }
+        .critico { color: #e67e22; font-size: 1.3em; }
+        .desc { font-size: 0.75em; color: #7f8c8d; line-height: 1.5; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Física de Radiación</h2>
+    
+    <div class="input-group">
+        <label>Elevación Solar (0.00°):</label>
+        <input type="number" id="numElev" value="67.0" min="0" max="90" step="0.1" oninput="sincronizar('num')">
+        <input type="range" id="rangeElev" min="0" max="90" step="0.1" value="67.0" oninput="sincronizar('range')">
+    </div>
+
+    <div class="input-group">
+        <label>Altitud (metros):</label>
+        <input type="number" id="alt" value="8000" min="0" max="12000" step="1" oninput="actualizar()">
+    </div>
+
+    <div class="results">
+        <div class="res-item">
+            <span>Potencia Teórica (Seno):</span>
+            <span class="val" id="resTeo">-</span>
+        </div>
+        <div class="res-item">
+            <span>Masa de Aire (AM):</span>
+            <span class="val" id="resAM">-</span>
+        </div>
+        <div class="res-item">
+            <span><b>Potencia Real Recibida:</b></span>
+            <span class="val critico" id="resReal">-</span>
+        </div>
+    </div>
+
+    <div class="desc">
+        * A <b>8000m</b>, la presión atmosférica es tan baja que el sol apenas encuentra obstáculos. Por eso la potencia real puede superar el 100% de la referencia a nivel del mar.
+    </div>
+</div>
+
+<script>
+function sincronizar(origen) {
+    const num = document.getElementById('numElev');
+    const range = document.getElementById('rangeElev');
+    if (origen === 'num') range.value = num.value;
+    else num.value = range.value;
+    actualizar();
+}
+
+function actualizar() {
+    const elev = parseFloat(document.getElementById('numElev').value);
+    const alt = parseFloat(document.getElementById('alt').value);
+    
+    if (isNaN(elev) || elev <= 0) {
+        document.getElementById('resTeo').innerText = "0.00%";
+        document.getElementById('resAM').innerText = "∞";
+        document.getElementById('resReal').innerText = "0.00%";
+        return;
+    }
+
+    const rad = elev * (Math.PI / 180);
+    
+    // Potencia Teórica Geométrica
+    const teo = Math.sin(rad) * 100;
+
+    // Presión atmosférica relativa (P/P0)
+    const presRel = Math.exp(-alt / 8434.5);
+
+    // Masa de Aire con corrección por presión (Kasten & Young)
+    const amBase = 1 / (Math.sin(rad) + 0.50572 * Math.pow(elev + 6.07995, -1.6364));
+    const amAjustada = amBase * presRel;
+
+    // Irradiancia real estimada (Normalizada a 990 W/m2 como 100%)
+    const intensidadDirecta = 1361 * Math.pow(0.7, Math.pow(amAjustada, 0.678));
+    const realGHI = intensidadDirecta * Math.sin(rad);
+    const realRelativa = (realGHI / 990) * 100;
+
+    document.getElementById('resTeo').innerText = teo.toFixed(2) + "%";
+    document.getElementById('resAM').innerText = amAjustada.toFixed(3);
+    document.getElementById('resReal').innerText = realRelativa.toFixed(2) + "%";
+}
+
+actualizar();
+</script>
+
+</body>
+</html>
