@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador Térmico Avanzado - 1 Litro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1e293b; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 650px; border: 1px solid #334155; }
+        h2 { color: #38bdf8; border-bottom: 2px solid #0ea5e9; padding-bottom: 10px; margin: 0 0 20px 0; text-align: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 0.7rem; font-weight: bold; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; }
+        input { padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #38bdf8; font-weight: bold; }
+        .results { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #1e293b; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
+        .val { font-family: 'Courier New', monospace; color: #f472b6; }
+        .main-res { margin-top: 15px; padding: 15px; background: #1e293b; border-left: 4px solid #38bdf8; border-radius: 4px; }
+        .time-box { font-size: 1.1rem; color: #fbbf24; font-weight: bold; display: block; margin-top: 5px; }
+        .status-msg { font-size: 0.75rem; color: #94a3b8; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Física de Enfriamiento (1L Agua)</h2>
+    
+    <div class="grid">
+        <div class="input-group"><label>Temp. Inicial Agua (°C)</label><input type="number" id="twater" value="25" oninput="process()"></div>
+        <div class="input-group"><label>Temp. Aire (°C)</label><input type="number" id="tdry" value="20" oninput="process()"></div>
+        <div class="input-group"><label>Altitud (msnm)</label><input type="number" id="alt" value="0" oninput="process()"></div>
+        <div class="input-group"><label>Humedad Relativa (%)</label><input type="number" id="rh" value="50" oninput="process()"></div>
+        <div class="input-group" style="grid-column: span 2;"><label>Viento (km/h)</label><input type="number" id="wind" value="10" oninput="process()"></div>
+    </div>
+
+    <div class="results">
+        <div class="row"><span>Tendencia Térmica (v0):</span> <span class="val" id="v_init">--</span></div>
+        <div class="row"><span>Límite (T. Bulbo Húmedo):</span> <span class="val" id="tw_val">--</span></div>
+        <div class="row"><span>Pérdida por Radiación:</span> <span class="val" id="rad_val">--</span></div>
+        <hr style="border:0; border-top:1px solid #334155;">
+        
+        <div class="main-res">
+            <span id="label_final">Tiempo estimado:</span>
+            <span class="time-box" id="time_val">--</span>
+            <span class="status-msg" id="msg_val">Analizando...</span>
+        </div>
+    </div>
+</div>
+
+<script>
+function process() {
+    // Parámetros Fijos para 1 Litro (asumimos superficie de 0.04 m2, como un cuenco)
+    const Masa = 1.0; // kg
+    const Cp = 4184; // J/kg·K
+    const Area = 0.04; // m2 (superficie de evaporación/radiación expuesta)
+    const Sigma = 5.67e-8; // Stefan-Boltzmann
+    const Emisividad = 0.95; // Agua
+
+    let Twat = parseFloat(document.getElementById('twater').value);
+    const Tair = parseFloat(document.getElementById('tdry').value);
+    const rh = parseFloat(document.getElementById('rh').value) / 100;
+    const alt = parseFloat(document.getElementById('alt').value);
+    const V = parseFloat(document.getElementById('wind').value) / 3.6;
+
+    // 1. Presión y Densidad (OACI)
+    const P = 1013.25 * Math.pow(1 - (0.0065 * alt / 288.15), 5.255);
+    const es_air = 6.112 * Math.exp((17.67 * Tair) / (Tair + 243.5));
+    const e_air = rh * es_air;
+    const T_k = Tair + 273.15;
+    const rho = ((P - e_air) * 100 / (287.05 * T_k)) + (e_air * 100 / (461.495 * T_k));
+
+    // 2. T. Bulbo Húmedo (Límite de enfriamiento)
+    let Tw = Tair; 
+    const gamma = 0.00066 * P; 
+    for(let i=0; i<15; i++) {
+        let ew = 6.112 * Math.exp((17.67 * Tw) / (Tw + 243.5));
+        let de_dt = ew * (17.67 * 243.5) / Math.pow(Tw + 243.5, 2);
+        Tw = Tw - (e_air - ew + gamma * (Tair - Tw))/(-de_dt - gamma);
+    }
+
+    // 3. Simulación de tiempo (Cálculo iterativo)
+    let currentT = Twat;
+    let seconds = 0;
+    let v_init = 0;
+    let limitFound = false;
+    let state = (Tair > Twat) ? "calentando" : "enfriando";
+
+    // Proyectamos hasta 48 horas máximo o hasta congelación/ebullición
+    while (seconds < 172800) {
+        // Convección y Evaporación
+        const h_c = (5.6 + 4.0 * V) * (rho / 1.225);
+        const h_e = (15 + 12 * V) * (1013.25 / P);
+        const es_wat = 6.112 * Math.exp((17.67 * currentT) / (currentT + 243.5));
+        
+        let Qc = h_c * (currentT - Tair);
+        let Qe = h_e * (es_wat - e_air);
+        
+        // Radiación (NUEVO: Stefan-Boltzmann)
+        let Qr = Sigma * Emisividad * (Math.pow(currentT + 273.15, 4) - Math.pow(Tair + 273.15, 4));
+
+        let Q_total_W_m2 = Qc + Qe + Qr;
+        let Watts_reales = Q_total_W_m2 * Area;
+
+        // Delta T por segundo: dT = Q / (m * Cp)
+        let dT = Watts_reales / (Masa * Cp);
+        
+        if (seconds === 0) v_init = -dT * 60; // Velocidad inicial en °C/min
+
+        currentT -= dT;
+        seconds += 10; // Pasos de 10 segundos para velocidad de cómputo
+
+        // Condiciones de parada
+        if (currentT <= 0 || currentT >= 100) { limitFound = true; break; }
+        if (Math.abs(dT) < 0.000001) break; // Equilibrio térmico
+    }
+
+    // Resultados visuales
+    document.getElementById('v_init').innerText = v_init.toFixed(4) + " °C/min";
+    document.getElementById('tw_val').innerText = Tw.toFixed(2) + " °C";
+    
+    // Radiación inicial
+    const Qr_init = Sigma * Emisividad * (Math.pow(Twat + 273.15, 4) - Math.pow(Tair + 273.15, 4));
+    document.getElementById('rad_val').innerText = (Qr_init * Area).toFixed(2) + " Watts";
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (limitFound) {
+        document.getElementById('label_final').innerText = (currentT <= 0) ? "Tiempo hasta Congelación:" : "Tiempo hasta Ebullición:";
+        document.getElementById('time_val').innerText = `${hours}h ${minutes}min`;
+        document.getElementById('msg_val').innerText = (currentT <= 0) ? "El agua alcanzará los 0°C." : "El agua alcanzará los 100°C.";
+    } else {
+        document.getElementById('label_final').innerText = "Tiempo hasta Equilibrio:";
+        document.getElementById('time_val').innerText = (seconds >= 172800) ? "+48 horas" : `${hours}h ${minutes}min`;
+        document.getElementById('msg_val').innerText = `Se estabilizará cerca de los ${currentT.toFixed(1)}°C (T. Bulbo Húmedo).`;
+    }
+}
+process();
+</script>
+</body>
+</html>
