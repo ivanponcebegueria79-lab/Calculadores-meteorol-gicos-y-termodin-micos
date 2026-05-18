@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Enlaces para Foros</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 { color: #2c3e50; margin-bottom: 10px; }
+        p { color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
+        .file-input-wrapper { margin-bottom: 20px; }
+        input[type="file"] { display: none; }
+        .btn-upload {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-upload:hover { background-color: #2980b9; }
+        .loading { display: none; color: #e67e22; font-weight: bold; margin: 15px 0; }
+        .result-box { display: none; margin-top: 25px; text-align: left; }
+        .result-box label { font-weight: bold; display: block; margin-bottom: 8px; color: #2c3e50; }
+        textarea {
+            width: 100%;
+            height: 50px;
+            padding: 10px;
+            border: 1px solid #ccd1d9;
+            border-radius: 6px;
+            resize: none;
+            box-sizing: border-box;
+            font-family: monospace;
+            font-size: 13px;
+            background-color: #f9fafb;
+        }
+        .btn-copy {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .btn-copy:hover { background-color: #27ae60; }
+        .preview {
+            max-width: 100%;
+            max-height: 150px;
+            margin-top: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Generador de Enlaces</h2>
+    <p>Selecciona tu foto. Se subirá automáticamente y obtendrás el enlace directo para el foro.</p>
+    
+    <div class="file-input-wrapper">
+        <label for="imageLoader" class="btn-upload">Seleccionar Imagen</label>
+        <input type="file" id="imageLoader" accept="image/*">
+    </div>
+
+    <div id="loadingText" class="loading">Subiendo imagen... Por favor, espera.</div>
+    <img id="previewImg" class="preview" alt="Vista previa">
+
+    <div id="resultContainer" class="result-box">
+        <label id="labelTipo">Enlace directo obtenido:</label>
+        <textarea id="outputUrl" readonly></textarea>
+        <button class="btn-copy" id="copyBtn">Copiar Enlace</button>
+    </div>
+</div>
+
+<script>
+    const imageLoader = document.getElementById('imageLoader');
+    const outputUrl = document.getElementById('outputUrl');
+    const resultContainer = document.getElementById('resultContainer');
+    const previewImg = document.getElementById('previewImg');
+    const copyBtn = document.getElementById('copyBtn');
+    const loadingText = document.getElementById('loadingText');
+
+    // IMPORTANTE: Usamos un Client-ID público de Imgur para procesar la subida
+    const clientId = '646506f36402d84'; 
+
+    imageLoader.addEventListener('change', handleImage, false);
+
+    function handleImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Mostrar carga y ocultar resultados previos
+        loadingText.style.display = 'block';
+        resultContainer.style.display = 'none';
+        previewImg.style.display = 'none';
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        // Subida automática vía API a Imgur
+        fetch('https://api.imgur.com/3/image', {
+            method: 'POST',
+            headers: {
+                Authorization: `Client-ID ${clientId}`
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            loadingText.style.display = 'none';
+            if (result.success) {
+                const directLink = result.data.link; // Formato corto: https://i.imgur.com/abcde.jpg
+                
+                // Colocamos el enlace directo limpio en el cuadro de texto
+                outputUrl.value = directLink;
+                
+                // Mostramos vista previa y el botón de copiar
+                previewImg.src = directLink;
+                previewImg.style.display = 'inline-block';
+                resultContainer.style.display = 'block';
+                copyBtn.innerText = "Copiar Enlace";
+            } else {
+                alert('Error al procesar la imagen. Inténtalo de nuevo.');
+            }
+        })
+        .catch(error => {
+            loadingText.style.display = 'none';
+            console.error('Error:', error);
+            alert('Ocurrió un error en la conexión.');
+        });
+    }
+
+    copyBtn.addEventListener('click', () => {
+        outputUrl.select();
+        outputUrl.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(outputUrl.value);
+        copyBtn.innerText = "¡Copiado!";
+        setTimeout(() => {
+            copyBtn.innerText = "Copiar Enlace";
+        }, 2000);
+    });
+</script>
+
+</body>
+</html>
