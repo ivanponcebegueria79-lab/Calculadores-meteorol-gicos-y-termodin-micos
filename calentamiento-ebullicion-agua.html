@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador Termodinámico Crítico</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1e293b; padding: 25px; border-radius: 15px; width: 100%; max-width: 650px; border: 1px solid #334155; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        h2 { color: #fbbf24; text-align: center; border-bottom: 2px solid #fbbf24; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 0.75rem; font-weight: bold; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; }
+        input { padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fbbf24; font-weight: bold; outline: none; }
+        .results { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #1e293b; margin-top: 15px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+        .val { font-family: 'Courier New', monospace; color: #38bdf8; font-weight: bold; }
+        .comparison { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .box { padding: 12px; border-radius: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: center; }
+        .box-title { font-size: 0.65rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; color: #e2e8f0; }
+        .heat-box { background: #431407; border-color: #f59e0b; }
+        .limit-box { background: #1e1b4b; border-color: #6366f1; }
+        .boil-box { background: #064e3b; border-color: #10b981; }
+        .big-val { font-size: 1.4rem; font-weight: 800; color: white; display: block; }
+        .status-msg { margin-top: 15px; font-size: 0.8rem; text-align: center; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Análisis de Calentamiento y Límites</h2>
+    
+    <div class="grid">
+        <div class="input-group"><label>Temp. Inicial Agua (°C)</label><input type="number" id="twat" value="20" oninput="process()"></div>
+        <div class="input-group"><label>Temp. Fuente / Aire (°C)</label><input type="number" id="tsrc" value="95" oninput="process()"></div>
+        <div class="input-group"><label>Altitud (msnm)</label><input type="number" id="alt" value="0" step="100" oninput="process()"></div>
+        <div class="input-group"><label>Viento (km/h)</label><input type="number" id="wind" value="10" oninput="process()"></div>
+        <div class="input-group" style="grid-column: span 2;"><label>Humedad Relativa (%)</label><input type="number" id="rh" value="40" oninput="process()"></div>
+    </div>
+
+    <div class="results">
+        <div class="row"><span>Punto de Ebullición (Teb):</span> <span class="val" id="teb_val">--</span></div>
+        <div class="row"><span>Límite Térmico (Twet):</span> <span class="val" id="tw_val">--</span></div>
+        <div class="row"><span>Densidad Aire Húmedo:</span> <span class="val" id="rho_val">--</span></div>
+    </div>
+
+    <div class="comparison">
+        <div class="box heat-box">
+            <span class="box-title">Potencia Neta</span>
+            <span class="big-val" id="q_neto">--</span>
+            <span style="font-size: 0.6rem;">W/m²</span>
+        </div>
+        <div class="box limit-box">
+            <span class="box-title">Tiempo a Twet</span>
+            <span class="big-val" id="t_limit">--</span>
+            <span style="font-size: 0.6rem;">MINUTOS</span>
+        </div>
+        <div class="box boil-box">
+            <span class="box-title">Tiempo a Teb</span>
+            <span class="big-val" id="t_boil">--</span>
+            <span style="font-size: 0.6rem;">MINUTOS</span>
+        </div>
+    </div>
+    <div id="status" class="status-msg"></div>
+</div>
+
+<script>
+function process() {
+    const T0 = parseFloat(document.getElementById('twat').value);
+    const Ts = parseFloat(document.getElementById('tsrc').value);
+    const alt = parseFloat(document.getElementById('alt').value);
+    const rh = parseFloat(document.getElementById('rh').value) / 100;
+    const V = parseFloat(document.getElementById('wind').value) / 3.6;
+
+    // Constantes Agua (1 Litro en recipiente estándar)
+    const masa = 1.0; const Cp = 4186; const area = 0.03;
+
+    // 1. Presión y Ebullición
+    const P = 1013.25 * Math.pow(1 - (0.0065 * alt / 288.15), 5.255);
+    const Teb = (1730.63 / (8.07131 - Math.log10(P * 0.750062))) - 233.426;
+
+    // 2. Newton-Raphson para Twet (Límite psicrométrico del aire)
+    const es_air = 6.112 * Math.exp((17.67 * Ts) / (Ts + 243.5));
+    const e_air = rh * es_air;
+    let Twet = Ts; 
+    const gamma = 0.00066 * P;
+    for(let i=0; i<10; i++) {
+        let ew = 6.112 * Math.exp((17.67 * Twet) / (Twet + 243.5));
+        let de = ew * (17.67 * 243.5) / Math.pow(Twet + 243.5, 2);
+        let f = e_air - ew + gamma * (Ts - Twet);
+        let df = -de - gamma;
+        Twet = Twet - f/df;
+    }
+
+    // 3. Densidad Humeda
+    const rho = ((P - e_air) * 100 / (287.05 * (Ts+273.15))) + (e_air * 100 / (461.495 * (Ts+273.15)));
+
+    // 4. Transferencia de Calor Inicial
+    const h_c = (5.0 + 3.2 * Math.pow(V, 0.75)) * (rho / 1.225);
+    const Qc = h_c * (Ts - T0);
+    const es_wat = 6.112 * Math.exp((17.67 * T0) / (T0 + 243.5));
+    const h_e = (12.0 + 10.0 * Math.pow(V, 0.75)) * (1013.25 / P) * 0.12; 
+    const Qe = h_e * (es_wat - e_air);
+
+    let Q_neto = Qc - Qe;
+    
+    // Lógica de visualización y bloqueos
+    document.getElementById('teb_val').innerText = Teb.toFixed(1) + " °C";
+    document.getElementById('tw_val').innerText = Twet.toFixed(1) + " °C";
+    document.getElementById('rho_val').innerText = rho.toFixed(4) + " kg/m3";
+
+    const statusDiv = document.getElementById('status');
+    
+    if (Q_neto <= 0) {
+        // El agua ya está más caliente que lo que el aire puede calentar
+        document.getElementById('q_neto').innerText = "0.0";
+        document.getElementById('t_limit').innerText = "---";
+        document.getElementById('t_boil').innerText = "---";
+        statusDiv.innerText = "ENFRIAMIENTO: El agua está perdiendo calor hacia el ambiente.";
+        statusDiv.style.backgroundColor = "#7f1d1d";
+    } else {
+        document.getElementById('q_neto').innerText = Q_neto.toFixed(1);
+        
+        // Tiempo a Twet (Equilibrio)
+        let t_to_wet = (masa * Cp * (Twet - T0)) / (Q_neto * area * 60);
+        document.getElementById('t_limit').innerText = t_to_wet > 0 ? t_to_wet.toFixed(1) : "ALCANZADA";
+
+        // Tiempo a Ebullición
+        if (Twet < Teb) {
+            document.getElementById('t_boil').innerText = "NUNCA";
+            statusDiv.innerText = "AVISO: El aire no tiene energía suficiente para hacer hervir el agua (Twet < Teb).";
+            statusDiv.style.backgroundColor = "#92400e";
+        } else {
+            let t_to_boil = (masa * Cp * (Teb - T0)) / (Q_neto * area * 60);
+            document.getElementById('t_boil').innerText = t_to_boil.toFixed(1);
+            statusDiv.innerText = "CALENTAMIENTO ACTIVO: El sistema tiene potencial de ebullición.";
+            statusDiv.style.backgroundColor = "#065f46";
+        }
+    }
+}
+process();
+</script>
+</body>
+</html>
